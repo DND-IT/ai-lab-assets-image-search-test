@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tamedia DAM AI Explorer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .glass {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(10px);
+        }
+    </style>
+</head>
+
+<body class="bg-slate-50 min-h-screen text-slate-900">
+
+    <div class="max-w-6xl mx-auto p-6 md:p-12 space-y-8">
+
+        <header class="flex justify-between items-end border-b pb-6">
+            <div>
+                <h1 class="text-3xl font-bold tracking-tight text-slate-800">DAM AI Explorer</h1>
+                <p class="text-slate-500 italic">Powered by Claude Sonnet 4.6 & WoodWing Assets</p>
+            </div>
+            <div class="text-right">
+                <span id="connectionStatus" class="text-xs font-semibold px-2 py-1 rounded bg-green-100 text-green-700">Proxy Connected</span>
+            </div>
+        </header>
+
+        <section class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="p-6">
+                <div class="flex items-center gap-2 mb-4 text-purple-600">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                    <h2 class="text-lg font-bold">1. Ask the AI</h2>
+                </div>
+                <textarea id="aiInput" placeholder="Example: Find images of the Zurich office from last month..." class="w-full h-24 p-4 rounded-xl border border-slate-200 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all resize-none mb-4 bg-slate-50"></textarea>
+
+                <button onclick="generateQuery()" id="btnGenerate" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-xl transition shadow-md flex justify-center items-center gap-2">
+                    Generate WoodWing Query
+                </button>
+
+                <div id="queryVariants" class="hidden mt-4 space-y-2">
+                    <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Generated queries (all three are searched)</p>
+                    <div class="grid gap-2">
+                        <div class="flex items-start gap-2">
+                            <span class="shrink-0 text-[10px] font-bold uppercase tracking-widest bg-blue-100 text-blue-700 px-2 py-1 rounded mt-0.5">EN</span>
+                            <code id="queryEn" class="text-xs font-mono text-slate-600 bg-slate-50 p-2 rounded-lg border border-slate-100 flex-1 break-all"></code>
+                        </div>
+                        <div class="flex items-start gap-2">
+                            <span class="shrink-0 text-[10px] font-bold uppercase tracking-widest bg-amber-100 text-amber-700 px-2 py-1 rounded mt-0.5">DE</span>
+                            <code id="queryDe" class="text-xs font-mono text-slate-600 bg-slate-50 p-2 rounded-lg border border-slate-100 flex-1 break-all"></code>
+                        </div>
+                        <div class="flex items-start gap-2">
+                            <span class="shrink-0 text-[10px] font-bold uppercase tracking-widest bg-red-100 text-red-700 px-2 py-1 rounded mt-0.5">FR</span>
+                            <code id="queryFr" class="text-xs font-mono text-slate-600 bg-slate-50 p-2 rounded-lg border border-slate-100 flex-1 break-all"></code>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Token usage for query generation -->
+                <div id="generateUsage" class="hidden mt-3 flex items-center gap-3 text-xs text-slate-500">
+                    <span class="inline-flex items-center gap-1 bg-purple-50 text-purple-600 px-2 py-1 rounded font-mono">
+                        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h10M7 12h10m-7 5h4"/></svg>
+                        In: <span id="generateInputTokens">0</span>
+                    </span>
+                    <span class="inline-flex items-center gap-1 bg-purple-50 text-purple-600 px-2 py-1 rounded font-mono">
+                        Out: <span id="generateOutputTokens">0</span>
+                    </span>
+                    <span class="text-slate-400">|</span>
+                    <span class="text-slate-400 font-mono">Total: <span id="generateTotalTokens">0</span></span>
+                </div>
+
+                <!-- Editable system prompt -->
+                <details class="mt-3">
+                    <summary class="text-xs font-semibold text-slate-400 cursor-pointer hover:text-slate-600 select-none">System prompt (editable)</summary>
+                    <textarea id="generatePromptText" class="mt-2 w-full text-xs text-slate-600 bg-slate-50 p-3 rounded-lg border border-slate-200 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none whitespace-pre-wrap h-48 overflow-y-auto font-mono leading-relaxed resize-y"></textarea>
+                    <button onclick="resetGeneratePrompt()" class="mt-1 text-xs text-purple-500 hover:text-purple-700 font-semibold">Reset to default</button>
+                </details>
+            </div>
+        </section>
+
+        <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+            <div class="flex items-center gap-2 mb-4 text-emerald-600">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <h2 class="text-lg font-bold">2. Refine & Execute</h2>
+            </div>
+            <div class="flex gap-3">
+                <input type="text" id="query" placeholder="Final query syntax..." class="flex-1 p-3 rounded-xl border border-slate-200 font-mono text-sm bg-slate-50 outline-none focus:border-emerald-500" oninput="lastQueries = null">
+                <button onclick="doSearch()" id="btnSearch" class="bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-3 rounded-xl font-bold transition shadow-md">
+                    Search
+                </button>
+            </div>
+            <p id="statusMsg" class="mt-3 text-xs text-slate-400 text-center"></p>
+        </section>
+
+        <!-- Step 3: AI Image Rating -->
+        <section id="ratingSection" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 hidden">
+            <div class="flex items-center gap-2 mb-4 text-amber-600">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                </svg>
+                <h2 class="text-lg font-bold">3. AI Image Rating</h2>
+            </div>
+            <p class="text-sm text-slate-500 mb-4">Let Claude analyze the top images and rank them by how well they illustrate your text for a news website.</p>
+            <button onclick="rateImages()" id="btnRate" class="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-3 rounded-xl transition shadow-md flex justify-center items-center gap-2">
+                Rate Images with AI
+            </button>
+            <p id="ratingStatus" class="mt-3 text-xs text-slate-400 text-center"></p>
+
+            <!-- Token usage for image rating -->
+            <div id="ratingUsage" class="hidden mt-3 flex items-center gap-3 text-xs text-slate-500">
+                <span class="inline-flex items-center gap-1 bg-amber-50 text-amber-600 px-2 py-1 rounded font-mono">
+                    <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h10M7 12h10m-7 5h4"/></svg>
+                    In: <span id="ratingInputTokens">0</span>
+                </span>
+                <span class="inline-flex items-center gap-1 bg-amber-50 text-amber-600 px-2 py-1 rounded font-mono">
+                    Out: <span id="ratingOutputTokens">0</span>
+                </span>
+                <span class="text-slate-400">|</span>
+                <span class="text-slate-400 font-mono">Total: <span id="ratingTotalTokens">0</span></span>
+            </div>
+
+            <!-- Editable rating prompt -->
+            <details class="mt-3">
+                <summary class="text-xs font-semibold text-slate-400 cursor-pointer hover:text-slate-600 select-none">Rating prompt (editable)</summary>
+                <textarea id="ratingPromptText" class="mt-2 w-full text-xs text-slate-600 bg-slate-50 p-3 rounded-lg border border-slate-200 focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none whitespace-pre-wrap h-48 overflow-y-auto font-mono leading-relaxed resize-y"></textarea>
+                <button onclick="resetRatingPrompt()" class="mt-1 text-xs text-amber-500 hover:text-amber-700 font-semibold">Reset to default</button>
+            </details>
+        </section>
+
+        <!-- AI Rating Results -->
+        <div id="ratingResults" class="space-y-3 hidden"></div>
+
+        <div id="results" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 pb-20">
+        </div>
+    </div>
+
+    <script>
+        const PROXY_URL = 'http://localhost:3000';
+        let lastSearchHits = [];
+        let lastQueries = null;
+        let defaultGeneratePrompt = '';
+        let defaultRatingPrompt = '';
+
+        // Load default prompts on page init
+        (async function loadDefaults() {
+            try {
+                const resp = await fetch(`${PROXY_URL}/api/prompts`);
+                const data = await resp.json();
+                defaultGeneratePrompt = data.generatePrompt;
+                defaultRatingPrompt = data.ratingPrompt;
+                document.getElementById('generatePromptText').value = defaultGeneratePrompt;
+                document.getElementById('ratingPromptText').value = defaultRatingPrompt;
+            } catch (e) {
+                console.error('Could not load default prompts:', e);
+            }
+        })();
+
+        function resetGeneratePrompt() {
+            document.getElementById('generatePromptText').value = defaultGeneratePrompt;
+        }
+
+        function resetRatingPrompt() {
+            document.getElementById('ratingPromptText').value = defaultRatingPrompt;
+        }
+
+        /**
+         * Communicates with the local server.js to get a query from Claude
+         */
+        async function generateQuery() {
+            const promptInput = document.getElementById('aiInput').value;
+            const btn = document.getElementById('btnGenerate');
+
+            if (!promptInput) return alert("Please type what you are looking for.");
+
+            btn.disabled = true;
+            btn.classList.add('opacity-50', 'cursor-not-allowed');
+            btn.innerText = "Sonnet 4.6 is writing query...";
+
+            try {
+                const currentSystemPrompt = document.getElementById('generatePromptText').value;
+                const response = await fetch(`${PROXY_URL}/api/generate`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt: promptInput, systemPrompt: currentSystemPrompt })
+                });
+
+                const data = await response.json();
+
+                if (data.query) {
+                    document.getElementById('query').value = data.query;
+                    lastQueries = data.queries || null;
+                    // Show all three query variants
+                    if (lastQueries) {
+                        document.getElementById('queryEn').textContent = lastQueries.en || '';
+                        document.getElementById('queryDe').textContent = lastQueries.de || '';
+                        document.getElementById('queryFr').textContent = lastQueries.fr || '';
+                        document.getElementById('queryVariants').classList.remove('hidden');
+                    }
+                    // Show token usage
+                    if (data.usage) {
+                        const inp = data.usage.input_tokens || 0;
+                        const out = data.usage.output_tokens || 0;
+                        document.getElementById('generateInputTokens').textContent = inp.toLocaleString();
+                        document.getElementById('generateOutputTokens').textContent = out.toLocaleString();
+                        document.getElementById('generateTotalTokens').textContent = (inp + out).toLocaleString();
+                        document.getElementById('generateUsage').classList.remove('hidden');
+                    }
+                } else {
+                    throw new Error("Invalid AI response");
+                }
+            } catch (err) {
+                console.error(err);
+                alert("AI generation failed. Is server.js running?");
+            } finally {
+                btn.disabled = false;
+                btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                btn.innerText = "Generate WoodWing Query";
+            }
+        }
+
+        /**
+         * Communicates with local server.js to search WoodWing
+         */
+        async function doSearch() {
+            const query = document.getElementById('query').value;
+            const status = document.getElementById('statusMsg');
+            const resultsDiv = document.getElementById('results');
+            const btn = document.getElementById('btnSearch');
+
+            if (!query) return alert("Please generate or enter a query first.");
+
+            resultsDiv.innerHTML = "";
+            status.innerText = "Searching Tamedia DAM...";
+            btn.disabled = true;
+
+            try {
+                const response = await fetch(`${PROXY_URL}/api/dam-search`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query: query, queries: lastQueries })
+                });
+
+                const data = await response.json();
+
+                if (data.hits && data.hits.length > 0) {
+                    // Deduplicate by filename
+                    const seen = new Set();
+                    const uniqueHits = data.hits.filter(hit => {
+                        const name = hit.metadata.name || hit.id;
+                        if (seen.has(name)) return false;
+                        seen.add(name);
+                        return true;
+                    });
+
+                    status.innerText = `Success: Found ${uniqueHits.length} unique assets (searched EN/DE/FR, ${data.totalHits} total matches).`;
+
+                    lastSearchHits = uniqueHits;
+                    document.getElementById('ratingSection').classList.remove('hidden');
+                    document.getElementById('btnRate').innerText = `Rate ${uniqueHits.length} Images with AI`;
+                    document.getElementById('ratingResults').classList.add('hidden');
+                    document.getElementById('ratingResults').innerHTML = '';
+                    document.getElementById('ratingStatus').innerText = '';
+
+                    uniqueHits.forEach(hit => {
+                        const card = document.createElement('div');
+                        card.className = "bg-white p-3 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between hover:shadow-md transition-shadow cursor-default";
+                        const damUrl = `https://dam.ness-dev.tamedia.ch/app/#/file/${hit.id}`;
+                        card.innerHTML = `
+                            ${hit.thumbnailUrl ? `<img src="${hit.thumbnailUrl}" alt="${hit.metadata.name || ''}" class="w-full aspect-square object-contain rounded-xl mb-2 bg-slate-100">` : '<div class="w-full aspect-square rounded-xl mb-2 bg-slate-100 flex items-center justify-center text-slate-300 text-sm">No thumbnail</div>'}
+                            <div>
+                                <div class="flex justify-between items-start mb-2">
+                                    <span class="text-[10px] font-bold uppercase tracking-widest text-slate-400 bg-slate-50 px-2 py-1 rounded">${hit.metadata.extension || 'file'}</span>
+                                    <span class="text-[10px] text-slate-300 font-mono">${hit.id.substring(0, 8)}...</span>
+                                </div>
+                                <p class="font-semibold text-slate-800 break-words text-xs leading-tight">${hit.metadata.name || 'Untitled Asset'}</p>
+                            </div>
+                            <div class="mt-2 pt-2 border-t border-slate-50 flex justify-between items-center">
+                                <span class="text-[10px] text-slate-400">${hit.metadata.fileSizeFormatted || ''}</span>
+                                <a href="${damUrl}" target="_blank" rel="noopener" class="text-xs font-bold text-emerald-600 hover:underline">View Asset</a>
+                            </div>
+                        `;
+                        resultsDiv.appendChild(card);
+                    });
+                } else {
+                    status.innerText = "No assets found for that query.";
+                    lastSearchHits = [];
+                    document.getElementById('ratingSection').classList.add('hidden');
+                    resultsDiv.innerHTML = "<div class='col-span-full text-center py-20 text-slate-300 font-medium'>No results found. Try a broader search.</div>";
+                }
+            } catch (err) {
+                console.error(err);
+                status.innerText = "Error: Could not reach backend.";
+            } finally {
+                btn.disabled = false;
+            }
+        }
+        /**
+         * Sends top images to Claude for visual relevance rating
+         */
+        async function rateImages() {
+            const text = document.getElementById('aiInput').value || document.getElementById('query').value;
+            const btn = document.getElementById('btnRate');
+            const status = document.getElementById('ratingStatus');
+            const resultsDiv = document.getElementById('ratingResults');
+
+            if (!lastSearchHits.length) return alert("No images to rate. Run a search first.");
+            if (!text) return alert("Please enter a description in Step 1 (or a query in Step 2) so Claude knows what to rate against.");
+
+            const top = lastSearchHits;
+
+            btn.disabled = true;
+            btn.classList.add('opacity-50', 'cursor-not-allowed');
+            btn.innerText = "Claude is analyzing images...";
+            status.innerText = `Sending ${top.length} images to Claude Vision for analysis...`;
+            resultsDiv.innerHTML = '';
+            resultsDiv.classList.add('hidden');
+
+            try {
+                const currentRatingPrompt = document.getElementById('ratingPromptText').value;
+                const response = await fetch(`${PROXY_URL}/api/rate-images`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        text,
+                        ratingPrompt: currentRatingPrompt,
+                        images: top.map(hit => ({
+                            id: hit.id,
+                            name: hit.metadata.name,
+                            description: hit.metadata.description || '',
+                            tags: hit.metadata.tags || [],
+                            thumbnailUrl: hit.thumbnailUrl,
+                        }))
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.ratings && data.ratings.length) {
+                    displayRatings(data.ratings, top);
+                    // Show token usage
+                    if (data.usage) {
+                        const inp = data.usage.input_tokens || 0;
+                        const out = data.usage.output_tokens || 0;
+                        document.getElementById('ratingInputTokens').textContent = inp.toLocaleString();
+                        document.getElementById('ratingOutputTokens').textContent = out.toLocaleString();
+                        document.getElementById('ratingTotalTokens').textContent = (inp + out).toLocaleString();
+                        document.getElementById('ratingUsage').classList.remove('hidden');
+                    }
+                } else if (data.raw) {
+                    status.innerText = "Claude responded but could not parse structured ratings.";
+                    resultsDiv.innerHTML = `<pre class="bg-white p-4 rounded-2xl border border-slate-200 text-sm text-slate-600 whitespace-pre-wrap">${data.raw}</pre>`;
+                    resultsDiv.classList.remove('hidden');
+                } else {
+                    status.innerText = data.error || "Rating failed.";
+                }
+            } catch (err) {
+                console.error(err);
+                status.innerText = "Error: Could not reach the rating endpoint.";
+            } finally {
+                btn.disabled = false;
+                btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                const rateCount = Math.min(lastSearchHits.length, 10);
+                btn.innerText = `Rate Top ${rateCount} Images with AI`;
+            }
+        }
+
+        /**
+         * Renders the ranked rating results
+         */
+        function displayRatings(ratings, hits) {
+            const resultsDiv = document.getElementById('ratingResults');
+            const status = document.getElementById('ratingStatus');
+
+            status.innerText = `Ranked ${ratings.length} images by relevance.`;
+            resultsDiv.innerHTML = `<h3 class="text-lg font-bold text-slate-700 flex items-center gap-2">
+                <span class="text-amber-500">&#9733;</span> AI Rankings
+            </h3>`;
+
+            ratings.forEach((r, rank) => {
+                const hit = hits[r.imageIndex - 1];
+                const thumbUrl = hit ? hit.thumbnailUrl : '';
+                const assetName = r.name || (hit ? hit.metadata.name : 'Unknown');
+
+                let badgeClass, barColor;
+                if (r.score >= 7) {
+                    badgeClass = 'background:#d1fae5;color:#047857';
+                    barColor = '#10b981';
+                } else if (r.score >= 4) {
+                    badgeClass = 'background:#fef3c7;color:#92400e';
+                    barColor = '#f59e0b';
+                } else {
+                    badgeClass = 'background:#fee2e2;color:#b91c1c';
+                    barColor = '#ef4444';
+                }
+
+                const card = document.createElement('div');
+                card.className = 'flex gap-4 bg-white p-4 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow';
+                card.innerHTML = `
+                    <div class="text-2xl font-black text-slate-200 w-8 shrink-0 flex items-start justify-center pt-1">#${rank + 1}</div>
+                    ${thumbUrl
+                        ? `<img src="${thumbUrl}" alt="${assetName}" class="w-24 h-24 object-cover rounded-lg bg-slate-100 shrink-0">`
+                        : `<div class="w-24 h-24 rounded-lg bg-slate-100 shrink-0 flex items-center justify-center text-slate-300 text-xs">No image</div>`
+                    }
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2 mb-1">
+                            <span class="px-2.5 py-0.5 rounded-full text-sm font-bold" style="${badgeClass}">${r.score}/10</span>
+                            <span class="text-xs text-slate-500 truncate">${assetName}</span>
+                        </div>
+                        <div class="w-full bg-slate-100 rounded-full h-1.5 mb-2">
+                            <div class="h-1.5 rounded-full" style="width:${r.score * 10}%;background:${barColor}"></div>
+                        </div>
+                        <p class="text-sm text-slate-600 leading-snug">${r.justification}</p>
+                    </div>
+                `;
+                resultsDiv.appendChild(card);
+            });
+
+            resultsDiv.classList.remove('hidden');
+        }
+    </script>
+</body>
+
+</html>

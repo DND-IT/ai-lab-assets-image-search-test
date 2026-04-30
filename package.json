@@ -1,0 +1,28 @@
+{
+  "name": "tamedia-dam-explorer",
+  "version": "1.0.0",
+  "description": "AI-powered proxy for WoodWing Assets using Claude Sonnet 4.6",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "keywords": [
+    "woodwing",
+    "elvis-dam",
+    "anthropic",
+    "claude",
+    "sonnet-4.6",
+    "proxy"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

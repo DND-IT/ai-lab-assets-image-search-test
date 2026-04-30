@@ -1,0 +1,10 @@
+name: ai-lab-assets-image-search-test
+runtime: node
+team: ai-lab
+environment: dev
+config:
+  port: 3000
+  env:
+    NODE_ENV: production
+  secrets:
+    enabled: true

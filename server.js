@@ -1,13 +1,11 @@
 require("dotenv").config();
 const express = require("express");
-const cors = require("cors");
-const path = require("path"); // For resolving file locations
+const path = require("path");
 
 const app = express();
-app.use(cors());
 app.use(express.json());
 
-const PORT = process.env.PORT || 3000;
+const PORT = Number(process.env.PORT ?? 3000);
 const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
 const ASSETS_PW = process.env.ASSETS_PASSWORD;
 const DAM_BASE = "https://dam.ness-dev.tamedia.ch";
@@ -52,13 +50,8 @@ Return ONLY a valid JSON array, ranked from best (highest score) to worst. Use t
 
 // --- ROUTES ---
 
-/**
- * 1. Serve the Frontend
- * When you visit http://localhost:3000, this sends the index.html file.
- */
-app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "index.html"));
-});
+// Serve static files from public folder
+app.use(express.static(path.join(__dirname, "public")));
 
 /**
  * Return default prompts so the frontend can populate editable textareas
@@ -328,7 +321,12 @@ app.post("/api/rate-images", async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
+// SPA fallback
+app.get("*", (_req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
+});
+
+app.listen(PORT, "0.0.0.0", () => {
   console.log(`\n🚀 TAMEDIA DAM EXPLORER`);
   console.log(`-----------------------`);
   console.log(`AI Model: Claude Sonnet 4.6`);

@@ -1,6 +1,7 @@
 require("dotenv").config();
 const express = require("express");
 const path = require("path");
+const archiver = require("archiver");
 
 const app = express();
 app.use(express.json());
@@ -318,6 +319,128 @@ app.post("/api/rate-images", async (req, res) => {
   } catch (err) {
     console.error("Rating Error:", err);
     res.status(500).json({ error: "Failed to rate images with Claude." });
+  }
+});
+
+/**
+ * 5. Download proxy — streams a preview rendition from WoodWing without exposing DAM auth
+ */
+app.get("/api/download/:id", async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const loginResp = await fetch(`${DAM_BASE}/services/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        username: "api.ai.lab",
+        password: ASSETS_PW,
+      }),
+    });
+    const authCookie = loginResp.headers.getSetCookie().join("; ");
+
+    if (!authCookie || !authCookie.includes("authToken")) {
+      return res.status(401).json({ error: "DAM Login failed." });
+    }
+
+    // Try preview rendition first, fall back to original
+    let fileResp = await fetch(`${DAM_BASE}/file/${id}/preview`, {
+      headers: { Cookie: authCookie },
+    });
+
+    if (!fileResp.ok) {
+      fileResp = await fetch(`${DAM_BASE}/file/${id}`, {
+        headers: { Cookie: authCookie },
+      });
+    }
+
+    if (!fileResp.ok) {
+      return res
+        .status(fileResp.status)
+        .json({ error: `DAM returned ${fileResp.status}` });
+    }
+
+    const contentType = fileResp.headers.get("content-type") || "image/jpeg";
+    const ext = contentType.includes("jpeg") || contentType.includes("jpg") ? "jpg" : "png";
+    const disposition = fileResp.headers.get("content-disposition");
+    const filename = disposition
+      ? disposition.match(/filename="?([^";\n]+)"?/)?.[1] || `${id}.${ext}`
+      : `${id}.${ext}`;
+
+    res.set("Content-Type", contentType);
+    res.set("Content-Disposition", `attachment; filename="${filename}"`);
+
+    const buffer = Buffer.from(await fileResp.arrayBuffer());
+    res.send(buffer);
+  } catch (err) {
+    console.error("Download Error:", err);
+    res.status(500).json({ error: "Failed to download from DAM." });
+  }
+});
+
+/**
+ * 6. Zip download — fetches preview renditions for multiple assets, streams as zip
+ */
+app.post("/api/download-zip", async (req, res) => {
+  const { ids } = req.body; // [{ id, name }]
+
+  if (!ids || !ids.length) {
+    return res.status(400).json({ error: "No asset IDs provided." });
+  }
+
+  try {
+    const loginResp = await fetch(`${DAM_BASE}/services/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        username: "api.ai.lab",
+        password: ASSETS_PW,
+      }),
+    });
+    const authCookie = loginResp.headers.getSetCookie().join("; ");
+
+    if (!authCookie || !authCookie.includes("authToken")) {
+      return res.status(401).json({ error: "DAM Login failed." });
+    }
+
+    res.set("Content-Type", "application/zip");
+    res.set(
+      "Content-Disposition",
+      `attachment; filename="dam-selection-${Date.now()}.zip"`,
+    );
+
+    const archive = archiver("zip", { zlib: { level: 1 } }); // fast compression (images are already compressed)
+    archive.pipe(res);
+
+    const fetches = await Promise.allSettled(
+      ids.map(async (item) => {
+        let fileResp = await fetch(`${DAM_BASE}/file/${item.id}/preview`, {
+          headers: { Cookie: authCookie },
+        });
+        if (!fileResp.ok) {
+          fileResp = await fetch(`${DAM_BASE}/file/${item.id}`, {
+            headers: { Cookie: authCookie },
+          });
+        }
+        if (!fileResp.ok) return null;
+        const buffer = Buffer.from(await fileResp.arrayBuffer());
+        const name = item.name || `${item.id}.jpg`;
+        return { name, buffer };
+      }),
+    );
+
+    for (const result of fetches) {
+      if (result.status === "fulfilled" && result.value) {
+        archive.append(result.value.buffer, { name: result.value.name });
+      }
+    }
+
+    await archive.finalize();
+  } catch (err) {
+    console.error("Zip Download Error:", err);
+    if (!res.headersSent) {
+      res.status(500).json({ error: "Failed to create zip." });
+    }
   }
 });
 

@@ -17,6 +17,25 @@
             background: rgba(255, 255, 255, 0.8);
             backdrop-filter: blur(10px);
         }
+
+        .rated-card { position: relative; user-select: none; }
+        .rated-card .select-check {
+            position: absolute; top: 8px; left: 8px; z-index: 10;
+            width: 22px; height: 22px; border-radius: 6px;
+            border: 2px solid rgba(255,255,255,0.8);
+            background: rgba(0,0,0,0.25);
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            transition: all 0.15s;
+        }
+        .rated-card .select-check svg { opacity: 0; transition: opacity 0.15s; }
+        .rated-card.selected .select-check {
+            background: #3b82f6; border-color: #3b82f6;
+        }
+        .rated-card.selected .select-check svg { opacity: 1; }
+        .rated-card.selected { outline: 2px solid #3b82f6; outline-offset: -2px; }
+        .rated-card:hover .select-check { border-color: #3b82f6; }
+        .rated-card[draggable="true"] { cursor: grab; }
+        .rated-card[draggable="true"]:active { cursor: grabbing; }
     </style>
 </head>
 
@@ -48,23 +67,6 @@
                     Generate WoodWing Query
                 </button>
 
-                <div id="queryVariants" class="hidden mt-4 space-y-2">
-                    <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Generated queries (all three are searched)</p>
-                    <div class="grid gap-2">
-                        <div class="flex items-start gap-2">
-                            <span class="shrink-0 text-[10px] font-bold uppercase tracking-widest bg-blue-100 text-blue-700 px-2 py-1 rounded mt-0.5">EN</span>
-                            <code id="queryEn" class="text-xs font-mono text-slate-600 bg-slate-50 p-2 rounded-lg border border-slate-100 flex-1 break-all"></code>
-                        </div>
-                        <div class="flex items-start gap-2">
-                            <span class="shrink-0 text-[10px] font-bold uppercase tracking-widest bg-amber-100 text-amber-700 px-2 py-1 rounded mt-0.5">DE</span>
-                            <code id="queryDe" class="text-xs font-mono text-slate-600 bg-slate-50 p-2 rounded-lg border border-slate-100 flex-1 break-all"></code>
-                        </div>
-                        <div class="flex items-start gap-2">
-                            <span class="shrink-0 text-[10px] font-bold uppercase tracking-widest bg-red-100 text-red-700 px-2 py-1 rounded mt-0.5">FR</span>
-                            <code id="queryFr" class="text-xs font-mono text-slate-600 bg-slate-50 p-2 rounded-lg border border-slate-100 flex-1 break-all"></code>
-                        </div>
-                    </div>
-                </div>
 
                 <!-- Token usage for query generation -->
                 <div id="generateUsage" class="hidden mt-3 flex items-center gap-3 text-xs text-slate-500">
@@ -88,19 +90,31 @@
             </div>
         </section>
 
-        <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+        <section id="searchSection" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 hidden">
             <div class="flex items-center gap-2 mb-4 text-emerald-600">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
                 <h2 class="text-lg font-bold">2. Refine & Execute</h2>
             </div>
-            <div class="flex gap-3">
-                <input type="text" id="query" placeholder="Final query syntax..." class="flex-1 p-3 rounded-xl border border-slate-200 font-mono text-sm bg-slate-50 outline-none focus:border-emerald-500" oninput="lastQueries = null">
-                <button onclick="doSearch()" id="btnSearch" class="bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-3 rounded-xl font-bold transition shadow-md">
-                    Search
-                </button>
+            <p class="text-sm text-slate-500 mb-3">Edit any of the three queries below, then hit Search. All three language variants are searched in parallel and results are merged.</p>
+            <div class="grid gap-2 mb-4">
+                <div class="flex items-start gap-2">
+                    <span class="shrink-0 text-[10px] font-bold uppercase tracking-widest bg-blue-100 text-blue-700 px-2 py-1 rounded mt-1.5">EN</span>
+                    <textarea id="queryEn" rows="2" class="text-xs font-mono text-slate-600 bg-slate-50 p-2 rounded-lg border border-slate-200 flex-1 break-all outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent resize-y"></textarea>
+                </div>
+                <div class="flex items-start gap-2">
+                    <span class="shrink-0 text-[10px] font-bold uppercase tracking-widest bg-amber-100 text-amber-700 px-2 py-1 rounded mt-1.5">DE</span>
+                    <textarea id="queryDe" rows="2" class="text-xs font-mono text-slate-600 bg-slate-50 p-2 rounded-lg border border-slate-200 flex-1 break-all outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent resize-y"></textarea>
+                </div>
+                <div class="flex items-start gap-2">
+                    <span class="shrink-0 text-[10px] font-bold uppercase tracking-widest bg-red-100 text-red-700 px-2 py-1 rounded mt-1.5">FR</span>
+                    <textarea id="queryFr" rows="2" class="text-xs font-mono text-slate-600 bg-slate-50 p-2 rounded-lg border border-slate-200 flex-1 break-all outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent resize-y"></textarea>
+                </div>
             </div>
+            <button onclick="doSearch()" id="btnSearch" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl transition shadow-md">
+                Search DAM
+            </button>
             <p id="statusMsg" class="mt-3 text-xs text-slate-400 text-center"></p>
         </section>
 
@@ -139,6 +153,26 @@
             </details>
         </section>
 
+        <!-- Selection toolbar (sticky) -->
+        <div id="selectionToolbar" class="hidden sticky top-0 z-30 bg-blue-600 text-white rounded-2xl shadow-lg p-3 flex items-center justify-between gap-3 flex-wrap">
+            <div class="flex items-center gap-3">
+                <span id="selectionCount" class="font-bold text-sm">0 selected</span>
+                <button onclick="selectAllRated()" class="text-xs bg-blue-500 hover:bg-blue-400 px-3 py-1 rounded-lg font-semibold transition">Select All</button>
+                <button onclick="clearSelection()" class="text-xs bg-blue-500 hover:bg-blue-400 px-3 py-1 rounded-lg font-semibold transition">Clear</button>
+            </div>
+            <div class="flex items-center gap-2">
+                <button onclick="copySelectedUrls()" class="text-xs bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg font-semibold transition flex items-center gap-1">
+                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                    Copy URLs
+                </button>
+                <button onclick="downloadSelected()" id="btnDownload" class="text-xs bg-white text-blue-700 hover:bg-blue-50 px-4 py-1.5 rounded-lg font-bold transition flex items-center gap-1 shadow">
+                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                    Download
+                </button>
+            </div>
+            <p id="selectionHint" class="w-full text-xs text-blue-200">Drag any selected image to your CMS, or use the buttons above.</p>
+        </div>
+
         <!-- AI Rating Results -->
         <div id="ratingResults" class="space-y-3 hidden"></div>
 
@@ -149,9 +183,10 @@
     <script>
         const PROXY_URL = '';
         let lastSearchHits = [];
-        let lastQueries = null;
+        let lastRatedHits = []; // hits in rated order (set after rating)
         let defaultGeneratePrompt = '';
         let defaultRatingPrompt = '';
+        const selectedAssets = new Map(); // id -> { id, name, index }
 
         // Load default prompts on page init
         (async function loadDefaults() {
@@ -184,6 +219,20 @@
 
             if (!promptInput) return alert("Please type what you are looking for.");
 
+            // Clear previous results and ratings
+            document.getElementById('results').innerHTML = '';
+            document.getElementById('ratingResults').innerHTML = '';
+            document.getElementById('ratingResults').classList.add('hidden');
+            document.getElementById('ratingSection').classList.add('hidden');
+            document.getElementById('ratingUsage').classList.add('hidden');
+            document.getElementById('searchSection').classList.add('hidden');
+            document.getElementById('statusMsg').innerText = '';
+            document.getElementById('ratingStatus').innerText = '';
+            lastSearchHits = [];
+            lastRatedHits = [];
+            selectedAssets.clear();
+            updateSelectionToolbar();
+
             btn.disabled = true;
             btn.classList.add('opacity-50', 'cursor-not-allowed');
             btn.innerText = "Sonnet 4.6 is writing query...";
@@ -198,16 +247,12 @@
 
                 const data = await response.json();
 
-                if (data.query) {
-                    document.getElementById('query').value = data.query;
-                    lastQueries = data.queries || null;
-                    // Show all three query variants
-                    if (lastQueries) {
-                        document.getElementById('queryEn').textContent = lastQueries.en || '';
-                        document.getElementById('queryDe').textContent = lastQueries.de || '';
-                        document.getElementById('queryFr').textContent = lastQueries.fr || '';
-                        document.getElementById('queryVariants').classList.remove('hidden');
-                    }
+                if (data.queries) {
+                    // Populate the step 2 query textareas and reveal the section
+                    document.getElementById('queryEn').value = data.queries.en || '';
+                    document.getElementById('queryDe').value = data.queries.de || '';
+                    document.getElementById('queryFr').value = data.queries.fr || '';
+                    document.getElementById('searchSection').classList.remove('hidden');
                     // Show token usage
                     if (data.usage) {
                         const inp = data.usage.input_tokens || 0;
@@ -234,22 +279,26 @@
          * Communicates with local server.js to search WoodWing
          */
         async function doSearch() {
-            const query = document.getElementById('query').value;
+            const enVal = document.getElementById('queryEn').value.trim();
+            const deVal = document.getElementById('queryDe').value.trim();
+            const frVal = document.getElementById('queryFr').value.trim();
             const status = document.getElementById('statusMsg');
             const resultsDiv = document.getElementById('results');
             const btn = document.getElementById('btnSearch');
 
-            if (!query) return alert("Please generate or enter a query first.");
+            if (!enVal && !deVal && !frVal) return alert("Please generate or enter queries first.");
 
             resultsDiv.innerHTML = "";
             status.innerText = "Searching Tamedia DAM...";
             btn.disabled = true;
 
             try {
+                const queries = { en: enVal, de: deVal, fr: frVal };
+
                 const response = await fetch(`${PROXY_URL}/api/dam-search`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ query: query, queries: lastQueries })
+                    body: JSON.stringify({ queries })
                 });
 
                 const data = await response.json();
@@ -278,7 +327,7 @@
                         card.className = "bg-white p-3 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between hover:shadow-md transition-shadow cursor-default";
                         const damUrl = `https://dam.ness-dev.tamedia.ch/app/#/file/${hit.id}`;
                         card.innerHTML = `
-                            ${hit.thumbnailUrl ? `<img src="${hit.thumbnailUrl}" alt="${hit.metadata.name || ''}" class="w-full aspect-square object-contain rounded-xl mb-2 bg-slate-100">` : '<div class="w-full aspect-square rounded-xl mb-2 bg-slate-100 flex items-center justify-center text-slate-300 text-sm">No thumbnail</div>'}
+                            ${hit.thumbnailUrl ? `<img src="${hit.thumbnailUrl}" alt="${hit.metadata.name || ''}" class="w-full object-contain rounded-xl mb-2 bg-slate-100">` : '<div class="w-full aspect-square rounded-xl mb-2 bg-slate-100 flex items-center justify-center text-slate-300 text-sm">No thumbnail</div>'}
                             <div>
                                 <div class="flex justify-between items-start mb-2">
                                     <span class="text-[10px] font-bold uppercase tracking-widest text-slate-400 bg-slate-50 px-2 py-1 rounded">${hit.metadata.extension || 'file'}</span>
@@ -310,7 +359,7 @@
          * Sends top images to Claude for visual relevance rating
          */
         async function rateImages() {
-            const text = document.getElementById('aiInput').value || document.getElementById('query').value;
+            const text = document.getElementById('aiInput').value;
             const btn = document.getElementById('btnRate');
             const status = document.getElementById('ratingStatus');
             const resultsDiv = document.getElementById('ratingResults');
@@ -377,13 +426,26 @@
         }
 
         /**
-         * Renders the ranked rating results
+         * Renders the ranked rating results with selection + drag support
          */
         function displayRatings(ratings, hits) {
             const resultsDiv = document.getElementById('ratingResults');
             const status = document.getElementById('ratingStatus');
 
-            status.innerText = `Ranked ${ratings.length} images by relevance.`;
+            // Reset selection state
+            selectedAssets.clear();
+            updateSelectionToolbar();
+
+            // Build a lookup of rated hits in display order
+            lastRatedHits = ratings.map(r => {
+                const hit = hits[r.imageIndex - 1];
+                return { ...r, hit };
+            });
+
+            // Log first hit's URL fields for debugging DAM response shape
+            if (hits[0]) console.log('DAM hit URL fields:', { previewUrl: hits[0].previewUrl, originalUrl: hits[0].originalUrl, thumbnailUrl: hits[0].thumbnailUrl });
+
+            status.innerText = `Ranked ${ratings.length} images by relevance. Click to select, then drag or download.`;
             resultsDiv.innerHTML = `<h3 class="text-lg font-bold text-slate-700 flex items-center gap-2">
                 <span class="text-amber-500">&#9733;</span> AI Rankings
             </h3>`;
@@ -392,6 +454,11 @@
                 const hit = hits[r.imageIndex - 1];
                 const thumbUrl = hit ? hit.thumbnailUrl : '';
                 const assetName = r.name || (hit ? hit.metadata.name : 'Unknown');
+                const assetId = hit ? hit.id : null;
+                // Direct DAM URL for high-res download (preview > original > proxy fallback)
+                const downloadUrl = hit
+                    ? (hit.previewUrl || hit.originalUrl || `${window.location.origin}/api/download/${hit.id}`)
+                    : null;
 
                 let badgeClass, barColor;
                 if (r.score >= 7) {
@@ -406,12 +473,21 @@
                 }
 
                 const card = document.createElement('div');
-                card.className = 'flex gap-4 bg-white p-4 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow';
+                card.className = 'rated-card flex gap-4 bg-white p-4 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow';
+                if (assetId) {
+                    card.dataset.assetId = assetId;
+                    card.dataset.assetName = assetName;
+                    card.dataset.downloadUrl = downloadUrl;
+                    card.draggable = true;
+                }
                 card.innerHTML = `
+                    <div class="select-check" onclick="event.stopPropagation(); toggleSelection('${assetId}', '${assetName.replace(/'/g, "\\'")}', this.closest('.rated-card').dataset.downloadUrl)">
+                        <svg class="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                    </div>
                     <div class="text-2xl font-black text-slate-200 w-8 shrink-0 flex items-start justify-center pt-1">#${rank + 1}</div>
                     ${thumbUrl
-                        ? `<img src="${thumbUrl}" alt="${assetName}" class="w-24 h-24 object-cover rounded-lg bg-slate-100 shrink-0">`
-                        : `<div class="w-24 h-24 rounded-lg bg-slate-100 shrink-0 flex items-center justify-center text-slate-300 text-xs">No image</div>`
+                        ? `<img src="${thumbUrl}" alt="${assetName}" class="w-24 h-24 object-cover rounded-lg bg-slate-100 shrink-0 pointer-events-none">`
+                        : `<div class="w-24 h-24 rounded-lg bg-slate-100 shrink-0 flex items-center justify-center text-slate-300 text-xs pointer-events-none">No image</div>`
                     }
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-2 mb-1">
@@ -422,12 +498,151 @@
                             <div class="h-1.5 rounded-full" style="width:${r.score * 10}%;background:${barColor}"></div>
                         </div>
                         <p class="text-sm text-slate-600 leading-snug">${r.justification}</p>
+                        ${hit ? `<a href="https://dam.ness-dev.tamedia.ch/app/#/file/${hit.id}" target="_blank" rel="noopener" class="inline-block mt-2 text-xs font-bold text-emerald-600 hover:underline" onclick="event.stopPropagation()">View Asset</a>` : ''}
                     </div>
                 `;
+
+                // Click card to toggle selection
+                card.addEventListener('click', () => {
+                    if (assetId) toggleSelection(assetId, assetName, downloadUrl);
+                });
+
+                // Drag handlers
+                if (assetId) {
+                    card.addEventListener('dragstart', (e) => {
+                        // Auto-select if not already selected
+                        if (!selectedAssets.has(assetId)) {
+                            toggleSelection(assetId, assetName, downloadUrl);
+                        }
+                        setDragData(e);
+                    });
+                }
+
                 resultsDiv.appendChild(card);
             });
 
             resultsDiv.classList.remove('hidden');
+        }
+
+        // --- Selection helpers ---
+
+        function toggleSelection(id, name, downloadUrl) {
+            if (selectedAssets.has(id)) {
+                selectedAssets.delete(id);
+            } else {
+                selectedAssets.set(id, { id, name, downloadUrl });
+            }
+            // Update card visual
+            const card = document.querySelector(`.rated-card[data-asset-id="${id}"]`);
+            if (card) card.classList.toggle('selected', selectedAssets.has(id));
+            updateSelectionToolbar();
+        }
+
+        function selectAllRated() {
+            document.querySelectorAll('.rated-card[data-asset-id]').forEach(card => {
+                const id = card.dataset.assetId;
+                const name = card.dataset.assetName;
+                const downloadUrl = card.dataset.downloadUrl;
+                selectedAssets.set(id, { id, name, downloadUrl });
+                card.classList.add('selected');
+            });
+            updateSelectionToolbar();
+        }
+
+        function clearSelection() {
+            selectedAssets.clear();
+            document.querySelectorAll('.rated-card.selected').forEach(c => c.classList.remove('selected'));
+            updateSelectionToolbar();
+        }
+
+        function updateSelectionToolbar() {
+            const toolbar = document.getElementById('selectionToolbar');
+            const count = selectedAssets.size;
+            if (count === 0) {
+                toolbar.classList.add('hidden');
+            } else {
+                toolbar.classList.remove('hidden');
+                document.getElementById('selectionCount').textContent =
+                    count === 1 ? '1 image selected' : `${count} images selected`;
+            }
+        }
+
+        // --- Drag ---
+
+        function setDragData(e) {
+            const items = [...selectedAssets.values()];
+            const urls = items.map(a => a.downloadUrl);
+
+            e.dataTransfer.effectAllowed = 'copyLink';
+            e.dataTransfer.setData('text/uri-list', urls.join('\r\n'));
+            e.dataTransfer.setData('text/plain', urls.join('\n'));
+            e.dataTransfer.setData('text/html',
+                items.map(a => `<img src="${a.downloadUrl}" alt="${a.name}">`).join('\n')
+            );
+
+            // Custom drag ghost with count badge
+            const ghost = document.createElement('div');
+            ghost.style.cssText = 'position:absolute;top:-9999px;left:-9999px;display:flex;align-items:center;gap:8px;background:#3b82f6;color:white;padding:8px 14px;border-radius:12px;font:bold 13px Inter,sans-serif;box-shadow:0 4px 12px rgba(0,0,0,0.2);';
+            ghost.innerHTML = `<svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg> ${items.length} image${items.length > 1 ? 's' : ''}`;
+            document.body.appendChild(ghost);
+            e.dataTransfer.setDragImage(ghost, 0, 0);
+            requestAnimationFrame(() => document.body.removeChild(ghost));
+        }
+
+        // --- Download / Copy ---
+
+        async function downloadSelected() {
+            const items = [...selectedAssets.values()];
+            if (!items.length) return;
+
+            const btn = document.getElementById('btnDownload');
+            btn.disabled = true;
+            btn.textContent = 'Downloading...';
+
+            try {
+                if (items.length === 1) {
+                    // Single file — direct from DAM
+                    window.open(items[0].downloadUrl, '_blank');
+                } else {
+                    // Multiple files — zip
+                    const resp = await fetch(`${PROXY_URL}/api/download-zip`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ ids: items.map(a => ({ id: a.id, name: a.name })) }),
+                    });
+                    if (!resp.ok) throw new Error(`Server returned ${resp.status}`);
+                    const blob = await resp.blob();
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `dam-selection-${Date.now()}.zip`;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    URL.revokeObjectURL(url);
+                }
+            } catch (err) {
+                console.error('Download failed:', err);
+                alert('Download failed. Check the console for details.');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Download';
+            }
+        }
+
+        async function copySelectedUrls() {
+            const items = [...selectedAssets.values()];
+            if (!items.length) return;
+            const urls = items.map(a => a.downloadUrl).join('\n');
+            try {
+                await navigator.clipboard.writeText(urls);
+                const btn = document.querySelector('[onclick="copySelectedUrls()"]');
+                const orig = btn.innerHTML;
+                btn.textContent = 'Copied!';
+                setTimeout(() => btn.innerHTML = orig, 1500);
+            } catch {
+                prompt('Copy these URLs:', urls);
+            }
         }
     </script>
 </body>
